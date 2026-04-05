@@ -65,6 +65,7 @@
     <Analyzer Include="/mnt/dev/Projects/unity/Space5x/Assets/FishNet/Runtime/Plugins/CodeAnalysis/FishNet.CodeAnalysis.Analyzers.dll" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Assets/Scripts/Generation/BigBangGenerator.cs" />
     <Compile Include="Assets/Spaceflight Controls/Scripts/CameraFlightFollow.cs" />
     <Compile Include="Assets/Spaceflight Controls/Scripts/PSDestroy.cs" />
     <Compile Include="Assets/Spaceflight Controls/Scripts/CustomPointer.cs" />
@@ -73,6 +74,7 @@
     <Compile Include="Assets/FishNet/Upgrading/UpgradeFromMirrorMenu.cs" />
     <Compile Include="Assets/Planets/Scripts/RotateOnY.cs" />
     <Compile Include="Assets/Spaceflight Controls/Scripts/DemoUI.cs" />
+    <Compile Include="Assets/Scripts/Generation/BigBangDebugView.cs" />
     <Compile Include="Assets/FishNet/Upgrading/MirrorUpgrade.cs" />
   </ItemGroup>
   <ItemGroup>

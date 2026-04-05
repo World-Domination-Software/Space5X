@@ -367,6 +367,8 @@
 "Assets/FishNet/Upgrading/MirrorUpgrade.cs"
 "Assets/FishNet/Upgrading/UpgradeFromMirrorMenu.cs"
 "Assets/Planets/Scripts/RotateOnY.cs"
+"Assets/Scripts/Generation/BigBangDebugView.cs"
+"Assets/Scripts/Generation/BigBangGenerator.cs"
 "Assets/Spaceflight Controls/Scripts/CameraFlightFollow.cs"
 "Assets/Spaceflight Controls/Scripts/CustomPointer.cs"
 "Assets/Spaceflight Controls/Scripts/DemoUI.cs"
