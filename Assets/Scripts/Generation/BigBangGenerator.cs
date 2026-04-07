@@ -163,6 +163,15 @@ public class BigBangGenerator : MonoBehaviour
         get { return sectors; }
     }
 
+    // Called by Unity when the scene starts playing. For now we
+    // automatically generate a galaxy as soon as the game runs so
+    // that the debug views and console stats have data to work with.
+    private void Start()
+    {
+        // Generate the galaxy using the current configuration.
+        GenerateGalaxy();
+    }
+
     // Generates the entire galaxy using the current configuration values.
     public void GenerateGalaxy()
     {
@@ -180,6 +189,9 @@ public class BigBangGenerator : MonoBehaviour
 
         // Create Ancient Trader starports and jump gates.
         CreateAncientTraderPortsAndGates();
+
+        // After generation is finished, write a summary of the results to the console.
+        LogGalaxyStats();
     }
 
     // Generates all sectors and rolls their main content type.
@@ -601,5 +613,117 @@ public class BigBangGenerator : MonoBehaviour
             // Assign the gate to the sector.
             chosenSector.jumpGate = gate;
         }
+    }
+
+    // Logs a simple summary of the generated galaxy to the Unity console.
+    private void LogGalaxyStats()
+    {
+        // Count how many sectors exist in total.
+        int totalSectors = sectors.Count;
+
+        // Count how many sectors are empty.
+        int emptyCount = 0;
+
+        // Count how many sectors contain black holes.
+        int blackHoleCount = 0;
+
+        // Count how many sectors contain asteroid fields.
+        int asteroidFieldCount = 0;
+
+        // Count how many sectors contain star systems.
+        int starSystemCount = 0;
+
+        // Count how many star systems are marked as homeworlds.
+        int homeworldCount = 0;
+
+        // Count how many sectors contain Ancient Trader starports.
+        int ancientTraderPortCount = 0;
+
+        // Track how many star systems have each possible planet count from zero to seven.
+        int[] planetCountBuckets = new int[8];
+
+        // Loop through all sectors to update the counters.
+        for (int i = 0; i < sectors.Count; i++)
+        {
+            // Read the current sector.
+            SectorData sector = sectors[i];
+
+            // Increase counts based on the sector content type.
+            if (sector.contentType == SectorContentType.Empty)
+            {
+                // Increase the empty sector count.
+                emptyCount++;
+            }
+            else if (sector.contentType == SectorContentType.BlackHole)
+            {
+                // Increase the black hole sector count.
+                blackHoleCount++;
+            }
+            else if (sector.contentType == SectorContentType.AsteroidField)
+            {
+                // Increase the asteroid field sector count.
+                asteroidFieldCount++;
+            }
+            else if (sector.contentType == SectorContentType.StarSystem)
+            {
+                // Increase the star system sector count.
+                starSystemCount++;
+
+                // If the sector has valid star system data, inspect it further.
+                if (sector.starSystem != null)
+                {
+                    // If this star system is a homeworld, increase the homeworld count.
+                    if (sector.starSystem.isHomeworld)
+                    {
+                        homeworldCount++;
+                    }
+
+                    // Read the number of planets in this system.
+                    int planetCount = sector.starSystem.planets.Count;
+
+                    // Clamp the planet count to the valid range for our buckets.
+                    if (planetCount < 0)
+                    {
+                        planetCount = 0;
+                    }
+                    else if (planetCount > 7)
+                    {
+                        planetCount = 7;
+                    }
+
+                    // Increase the bucket for the clamped planet count.
+                    planetCountBuckets[planetCount]++;
+                }
+
+                // If this sector also has a starport marked as an Ancient Trader port, count it.
+                if (sector.starport != null && sector.starport.isAncientTraderPort)
+                {
+                    ancientTraderPortCount++;
+                }
+            }
+        }
+
+        // Build a readable summary string for the Unity console.
+        string summary =
+            "Big Bang generation complete" +
+            "\nTotal sectors: " + totalSectors +
+            "\nEmpty sectors: " + emptyCount +
+            "\nBlack holes: " + blackHoleCount +
+            "\nAsteroid fields: " + asteroidFieldCount +
+            "\nStar systems: " + starSystemCount +
+            "\nHomeworld star systems: " + homeworldCount +
+            "\nAncient Trader ports: " + ancientTraderPortCount +
+            "\nStar systems by planet count (0 to 7):" +
+            "\n  0 planets: " + planetCountBuckets[0] +
+            "\n  1 planet: " + planetCountBuckets[1] +
+            "\n  2 planets: " + planetCountBuckets[2] +
+            "\n  3 planets: " + planetCountBuckets[3] +
+            "\n  4 planets: " + planetCountBuckets[4] +
+            "\n  5 planets: " + planetCountBuckets[5] +
+            "\n  6 planets: " + planetCountBuckets[6] +
+            "\n  7+ planets (clamped): " + planetCountBuckets[7];
+
+        // Write the summary to the Unity console so it is easy to read.
+        Debug.Log(summary);
     }
 }

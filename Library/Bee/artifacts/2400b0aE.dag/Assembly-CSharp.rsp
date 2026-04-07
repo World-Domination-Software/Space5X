@@ -369,6 +369,7 @@
 "Assets/Planets/Scripts/RotateOnY.cs"
 "Assets/Scripts/Generation/BigBangDebugView.cs"
 "Assets/Scripts/Generation/BigBangGenerator.cs"
+"Assets/Scripts/Generation/BigBangMapCanvasView.cs"
 "Assets/Spaceflight Controls/Scripts/CameraFlightFollow.cs"
 "Assets/Spaceflight Controls/Scripts/CustomPointer.cs"
 "Assets/Spaceflight Controls/Scripts/DemoUI.cs"

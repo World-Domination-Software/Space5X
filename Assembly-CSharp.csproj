@@ -68,6 +68,7 @@
     <Compile Include="Assets/Scripts/Generation/BigBangGenerator.cs" />
     <Compile Include="Assets/Spaceflight Controls/Scripts/CameraFlightFollow.cs" />
     <Compile Include="Assets/Spaceflight Controls/Scripts/PSDestroy.cs" />
+    <Compile Include="Assets/Scripts/Generation/BigBangMapCanvasView.cs" />
     <Compile Include="Assets/Spaceflight Controls/Scripts/CustomPointer.cs" />
     <Compile Include="Assets/Spaceflight Controls/Scripts/PlayerFlightControl.cs" />
     <Compile Include="Assets/Spaceflight Controls/Scripts/bullet.cs" />
