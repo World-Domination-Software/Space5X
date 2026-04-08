@@ -1,8 +1,9 @@
 ﻿using UnityEngine;
 using System.Collections;
+using FishNet.Object;
 
 [System.Serializable]
-public class PlayerFlightControl : MonoBehaviour
+public class PlayerFlightControl : NetworkBehaviour
 {
 
 	//"Objects", "For the main ship Game Object and weapons"));
@@ -74,6 +75,30 @@ public class PlayerFlightControl : MonoBehaviour
 		}
 		
 	}
+
+	public override void OnStartClient()
+	{
+		base.OnStartClient();
+		
+		// Only the owning client should hook up the camera to this ship.
+		if (!IsOwner)
+			return;
+		
+		CameraFlightFollow cam = CameraFlightFollow.instance;
+		if (cam == null)
+			cam = GameObject.FindObjectOfType<CameraFlightFollow>();
+		
+		if (cam != null)
+		{
+			cam.control = this;
+			// Always target this ship for the local owner.
+			cam.target = transform;
+		}
+		else
+		{
+			Debug.LogWarning("(FlightControls) No CameraFlightFollow found to attach to local player.");
+		}
+	}
 	
 	
 	void FixedUpdate () {
@@ -82,6 +107,10 @@ public class PlayerFlightControl : MonoBehaviour
 			Debug.LogError("(FlightControls) Ship GameObject is null.");
 			return;
 		}
+		
+		// Only the owning player should drive this ship.
+		if (!IsOwner)
+			return;
 		
 		
 		updateCursorPosition();
@@ -185,15 +214,14 @@ public class PlayerFlightControl : MonoBehaviour
 
 	
 	void Update() {
-	
-		//Please remove this and replace it with a shooting system that works for your game, if you need one.
+		// Only the owning client should read input and request shots.
+		if (!IsOwner)
+			return;
+		
 		if (Input.GetMouseButtonDown(0)) {
 			fireShot();
 		}
-
-	
 	}
-	
 	
 	public void fireShot() {
 	
@@ -207,13 +235,11 @@ public class PlayerFlightControl : MonoBehaviour
 			return;
 		}
 		
-		//Shoots it in the direction that the pointer is pointing. Might want to take note of this line for when you upgrade the shooting system.
+		//Shoots it in the direction that the pointer is pointing.
 		if (Camera.main == null) {
 			Debug.LogError("(FlightControls) Main camera is null! Make sure the flight camera has the tag of MainCamera!");
 			return;
 		}
-		
-		GameObject shot1 = (GameObject) GameObject.Instantiate(bullet, weapon_hardpoint_1.position, Quaternion.identity);
 		
 		Ray vRay;
 		
@@ -222,20 +248,49 @@ public class PlayerFlightControl : MonoBehaviour
 		else
 			vRay = Camera.main.ScreenPointToRay(new Vector2(Screen.width / 2f, Screen.height / 2f));
 			
-			
 		RaycastHit hit;
+		Vector3 direction;
 		
 		//If we make contact with something in the world, we'll make the shot actually go to that point.
 		if (Physics.Raycast(vRay, out hit)) {
-			shot1.transform.LookAt(hit.point);
-			shot1.GetComponent<Rigidbody>().AddForce((shot1.transform.forward) * 9000f);
-		
-		//Otherwise, since the ray didn't hit anything, we're just going to guess and shoot the projectile in the general direction.
-		} else {
-			shot1.GetComponent<Rigidbody>().AddForce((vRay.direction) * 9000f);
+			direction = (hit.point - weapon_hardpoint_1.position).normalized;
 		}
-	
+		//Otherwise, since the ray didn't hit anything, we're just going to guess and shoot the projectile in the general direction.
+		else {
+			direction = vRay.direction.normalized;
+		}
+
+		// Ask the server to actually spawn and fire the bullet.
+		FireShotServerRpc(direction);
 	}
-	
+
+	[ServerRpc]
+	private void FireShotServerRpc(Vector3 direction)
+	{
+		if (weapon_hardpoint_1 == null) {
+			Debug.LogError("(FlightControls) Server: Weapon hardpoint is null when trying to fire.");
+			return;
+		}
+		
+		if (bullet == null) {
+			Debug.LogError("(FlightControls) Server: Bullet GameObject is null!");
+			return;
+		}
+
+		// Spawn the bullet on the server so FishNet can replicate it.
+		GameObject shot1 = Instantiate(bullet, weapon_hardpoint_1.position, Quaternion.LookRotation(direction));
+		
+		// Apply force in the desired direction.
+		Rigidbody rb = shot1.GetComponent<Rigidbody>();
+		if (rb != null)
+			rb.AddForce(direction * 9000f);
+		
+		// Make sure the bullet has a NetworkObject so it replicates.
+		NetworkObject nob = shot1.GetComponent<NetworkObject>();
+		if (nob != null)
+			nob.Spawn(nob);
+		else
+			Debug.LogWarning("(FlightControls) Bullet prefab does not have a NetworkObject component; it won't be networked.");
+	}
 
 }

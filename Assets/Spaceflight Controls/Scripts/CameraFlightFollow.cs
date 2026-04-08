@@ -7,6 +7,7 @@ public class CameraFlightFollow : MonoBehaviour {
 
 	public Transform target; //What the camera looks at. Generally the targeter.
 	public PlayerFlightControl control; //The PlayerFlightControl script that is in play.
+	private Transform cameraTransform; //The transform of the main camera we actually move.
 	
 	public float follow_distance = 3.0f; //How far behind the camera will follow the targeter.
 	public float camera_elevation = 3.0f; //How high the camera will rise above the targeter's Z axis.
@@ -20,24 +21,34 @@ public class CameraFlightFollow : MonoBehaviour {
 	
 	public static CameraFlightFollow instance; //The instance of this class. Should only be one.
 	
-	
 	void Awake() {
-	
+		// This script should be placed on the camera you wish to follow with.
 		instance = this;
-	
-	
+
+		// Explicitly find and cache the main camera so this script
+		// can live on a non-camera object (like the ship) and still
+		// move/rotate the actual camera.
+		if (Camera.main != null) {
+			cameraTransform = Camera.main.transform;
+		} else {
+			cameraTransform = GetComponentInChildren<Camera>() != null ? GetComponentInChildren<Camera>().transform : null;
+			if (cameraTransform == null) {
+				Debug.LogError("(Flight Controls) CameraFlightFollow could not find a main camera.");
+			}
+		}
 	}
 
 	
 	void FixedUpdate () {
+		// Only follow for the owning player's ship.
+		if (control == null || !control.IsOwner)
+			return;
+
+		if (cameraTransform == null)
+			return;
 
 		if (target == null) {
 			Debug.LogError("(Flight Controls) Camera target is null!");
-			return;
-		}	
-		
-		if (control == null) {
-			Debug.LogError("(Flight Controls) Flight controller is null on camera!");
 			return;
 		}	
 		
@@ -45,9 +56,9 @@ public class CameraFlightFollow : MonoBehaviour {
 		Vector3 newPosition = target.TransformPoint(control.yaw * yawMultiplier, camera_elevation, -follow_distance);
 
 		//Get the difference between the current location and the target's current location.
-		Vector3 positionDifference = target.position - transform.position;
+		Vector3 positionDifference = target.position - cameraTransform.position;
 		//Move the camera towards the new position.
-		transform.position = Vector3.Lerp (transform.position, newPosition, Time.deltaTime * follow_tightness);
+		cameraTransform.position = Vector3.Lerp (cameraTransform.position, newPosition, Time.deltaTime * follow_tightness);
 		
 		Quaternion newRotation;
 		if (control.afterburner_Active && shake_on_afterburn) {
@@ -64,7 +75,7 @@ public class CameraFlightFollow : MonoBehaviour {
 		
 		}
 		
-		transform.rotation = Quaternion.Slerp (transform.rotation, newRotation, Time.deltaTime * rotation_tightness);
+		cameraTransform.rotation = Quaternion.Slerp (cameraTransform.rotation, newRotation, Time.deltaTime * rotation_tightness);
 
 	}
 }
