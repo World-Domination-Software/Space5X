@@ -507,16 +507,76 @@ Safeguards (to keep it fair and simple):
 
 ---
 
-## 14. Networking and Persistence
+## 14. Sector Runtime Architecture
 
-### 14.1 Networking
+The galaxy is **data-driven and dynamically activated**. No sector exists as a fully loaded Unity scene all at once.
+
+### 14.1 Core Data Model
+
+All galaxy objects use sector-based addressing (never giant world coordinates):
+
+- **`GalaxyPosition`** – contains `SectorX`, `SectorY`, and `LocalPosition` (position inside the sector).
+- **`GalaxyObjectData`** – a single object in the galaxy: `Id`, `GalaxyPosition`, `SectorVisibilityCategory`, and `GalaxyObjectType`.
+- **`GalaxySectorData`** – all `GalaxyObjectData` entries that belong to one sector.
+
+### 14.2 Visibility Categories
+
+Every object must declare a visibility category:
+
+| Category | Examples | Networking |
+|---|---|---|
+| `TacticalNetworked` | Ships, stations, jump gates | FishNet `NetworkObject` |
+| `StrategicLandmark` | Stars, planets, black holes | Client-side visual only |
+| `BackgroundVisual` | Nebula, debris | Client-only, never networked |
+
+### 14.3 Sector Activation Tiers
+
+The **`SectorActivationManager`** maintains three tiers:
+
+- **Full Activation** (player's current sector) – all objects spawned including `TacticalNetworked` entities.
+- **Partial Activation** (adjacent sectors) – only `StrategicLandmark` objects spawned as client visuals.
+- **Inactive** (all other sectors) – no `GameObjects`; data-only simulation.
+
+When the player moves to a new sector, the manager despawns outgoing sectors and activates incoming ones.
+
+### 14.4 Visual Factory
+
+**`SectorVisualFactory`** spawns and despawns non-networked `GameObjects` for `StrategicLandmark` and `BackgroundVisual` objects. It requires one prefab per `GalaxyObjectType` assigned in the Inspector.
+
+### 14.5 Floating Origin
+
+**`ClientSectorOrigin`** keeps the player's current sector at roughly world position `(0, 0, 0)` by rebasing all rendered positions:
+
+```
+RenderedPosition = ((ObjectSector - PlayerSector) * SectorSize) + ObjectLocalPosition
+```
+
+This prevents floating-point precision errors from accumulating across a 500 × 500 sector galaxy.
+
+### 14.6 Sector Border Crossing
+
+**`SectorTransitionManager`** detects when the player's ship leaves the current sector boundary (±50,000 units on X and Z), updates `SectorX`/`SectorY`, recalculates local position, and notifies `ClientSectorOrigin` and `SectorActivationManager`.
+
+### 14.7 FishNet Observer Condition
+
+**`SectorObserverCondition`** is a custom FishNet `ObserverCondition` ScriptableObject. The server uses it to decide which clients can see each `NetworkObject`:
+
+- Same sector → fully visible.
+- Adjacent sector → `StrategicLandmark` only (no ships or combat objects).
+- Any other sector → not visible.
+
+---
+
+## 15. Networking and Persistence
+
+### 15.1 Networking
 
 - Use **FishNet** as the networking solution.
 - Server is **authoritative**.
 - Players load and simulate one main sector at a time.
 - Other sectors run at lower fidelity using abstract or event-based simulation.
 
-### 14.2 Persistence
+### 15.2 Persistence
 
 - **SQLite** for single-player or small local games.
 - **MySQL or similar** for larger, multi-user server deployments.
@@ -533,7 +593,7 @@ Key saved data includes:
 
 ---
 
-## 15. Phased Development Plan (Simplified)
+## 16. Phased Development Plan (Simplified)
 
 1. **Phase 1 – Galaxy Skeleton**
    - Big Bang generator.
@@ -579,7 +639,7 @@ Key saved data includes:
 
 ---
 
-## 16. Guiding Principles
+## 17. Guiding Principles
 
 - **Clarity over complexity** – rules should be easy to explain and code.
 - **Mass and distance matter** – big fleets are powerful but slow and expensive to move.

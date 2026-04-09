@@ -181,6 +181,18 @@ public class BigBangGenerator : MonoBehaviour
         get { return sectors; }
     }
 
+    // List of all generated sectors converted into the new GalaxySectorData format.
+    // This is the data-driven representation used by SectorActivationManager,
+    // SectorVisualFactory, and the rest of the runtime sector systems.
+    private List<GalaxySectorData> galaxySectors = new List<GalaxySectorData>();
+
+    // Public accessor to read back the data-driven sector list after generation.
+    public List<GalaxySectorData> GalaxySectors
+    {
+        // Returns the list of GalaxySectorData built from the generated SectorData.
+        get { return galaxySectors; }
+    }
+
     // Called by Unity when the scene starts playing. For now we
     // automatically generate a galaxy as soon as the game runs so
     // that the debug views and console stats have data to work with.
@@ -199,6 +211,9 @@ public class BigBangGenerator : MonoBehaviour
         // Clear any existing sectors from a previous generation.
         sectors.Clear();
 
+        // Clear any existing data-driven sector entries from a previous generation.
+        galaxySectors.Clear();
+
         // Generate all sector data for the map.
         GenerateAllSectors();
 
@@ -207,6 +222,10 @@ public class BigBangGenerator : MonoBehaviour
 
         // Create Ancient Trader starports and jump gates.
         CreateAncientTraderPortsAndGates();
+
+        // Convert all generated SectorData into the new GalaxySectorData format
+        // so the runtime sector systems can work with data-driven objects.
+        BuildGalaxySectorData();
 
         // After generation is finished, write a summary of the results to the console.
         LogGalaxyStats();
@@ -777,6 +796,172 @@ public class BigBangGenerator : MonoBehaviour
             // Assign the gate to the sector.
             chosenSector.jumpGate = gate;
         }
+    }
+
+    // Converts all generated SectorData entries into GalaxySectorData objects.
+    // Each piece of content in a sector (star, planets, ports, gates, black holes,
+    // asteroid fields) becomes a GalaxyObjectData entry with a unique ID,
+    // a GalaxyPosition, a SectorVisibilityCategory, and a GalaxyObjectType.
+    //
+    // This method runs after AssignHomeworlds and CreateAncientTraderPortsAndGates
+    // so that homeworld flags and Ancient Trader port flags are already set.
+    private void BuildGalaxySectorData()
+    {
+        // Process every generated sector.
+        for (int i = 0; i < sectors.Count; i++)
+        {
+            // Get the raw sector data produced by the generator.
+            SectorData sector = sectors[i];
+
+            // Create a new data-driven sector object for the runtime systems.
+            GalaxySectorData galaxySector = new GalaxySectorData();
+            galaxySector.SectorX = sector.x;
+            galaxySector.SectorY = sector.y;
+
+            // Build a base prefix for object IDs in this sector.
+            string sectorPrefix = "sector_" + sector.x + "_" + sector.y;
+
+            // Process sector content types that produce galaxy objects.
+            if (sector.contentType == SectorContentType.BlackHole)
+            {
+                // Create a GalaxyObjectData for the black hole.
+                GalaxyObjectData blackHoleObj = new GalaxyObjectData();
+                blackHoleObj.Id = sectorPrefix + "_blackhole";
+                blackHoleObj.ObjectType = GalaxyObjectType.BlackHole;
+
+                // Black holes are strategic landmarks visible from adjacent sectors.
+                blackHoleObj.VisibilityCategory = SectorVisibilityCategory.StrategicLandmark;
+
+                // Black holes sit at the center of the sector (local origin).
+                blackHoleObj.Position = new GalaxyPosition
+                {
+                    SectorX = sector.x,
+                    SectorY = sector.y,
+                    LocalPosition = Vector3.zero
+                };
+
+                // Add the black hole to the sector's object list.
+                galaxySector.Objects.Add(blackHoleObj);
+            }
+            else if (sector.contentType == SectorContentType.AsteroidField)
+            {
+                // Create a GalaxyObjectData for the asteroid field.
+                GalaxyObjectData asteroidObj = new GalaxyObjectData();
+                asteroidObj.Id = sectorPrefix + "_asteroidfield";
+                asteroidObj.ObjectType = GalaxyObjectType.AsteroidField;
+
+                // Asteroid fields are background visuals; they do not appear in adjacent sectors.
+                asteroidObj.VisibilityCategory = SectorVisibilityCategory.BackgroundVisual;
+
+                // Place the asteroid field at the center of the sector.
+                asteroidObj.Position = new GalaxyPosition
+                {
+                    SectorX = sector.x,
+                    SectorY = sector.y,
+                    LocalPosition = Vector3.zero
+                };
+
+                // Add the asteroid field to the sector's object list.
+                galaxySector.Objects.Add(asteroidObj);
+            }
+            else if (sector.contentType == SectorContentType.StarSystem && sector.starSystem != null)
+            {
+                // Create a GalaxyObjectData for the star at the center of the system.
+                GalaxyObjectData starObj = new GalaxyObjectData();
+                starObj.Id = sectorPrefix + "_star";
+                starObj.ObjectType = GalaxyObjectType.Star;
+
+                // Stars are strategic landmarks visible from adjacent sectors.
+                starObj.VisibilityCategory = SectorVisibilityCategory.StrategicLandmark;
+
+                // The star is always at the local origin (0, 0, 0) inside the sector.
+                starObj.Position = new GalaxyPosition
+                {
+                    SectorX = sector.x,
+                    SectorY = sector.y,
+                    LocalPosition = Vector3.zero
+                };
+
+                // Add the star to the sector's object list.
+                galaxySector.Objects.Add(starObj);
+
+                // Create a GalaxyObjectData for each planet in the star system.
+                for (int p = 0; p < sector.starSystem.planets.Count; p++)
+                {
+                    PlanetData planet = sector.starSystem.planets[p];
+
+                    GalaxyObjectData planetObj = new GalaxyObjectData();
+                    planetObj.Id = sectorPrefix + "_planet_" + p;
+                    planetObj.ObjectType = GalaxyObjectType.Planet;
+
+                    // All planets are strategic landmarks. They are visible from
+                    // adjacent sectors as distant visual markers.
+                    planetObj.VisibilityCategory = SectorVisibilityCategory.StrategicLandmark;
+
+                    // Use the planet's local 2D position from the generator.
+                    // Z is mapped to the Unity Z axis; Y is left as zero (flat galaxy plane).
+                    planetObj.Position = new GalaxyPosition
+                    {
+                        SectorX = sector.x,
+                        SectorY = sector.y,
+                        LocalPosition = new Vector3(planet.localPosition.x, 0f, planet.localPosition.y)
+                    };
+
+                    // Add the planet to the sector's object list.
+                    galaxySector.Objects.Add(planetObj);
+                }
+
+                // If the sector has a starport, create a GalaxyObjectData for it.
+                if (sector.starport != null)
+                {
+                    GalaxyObjectData stationObj = new GalaxyObjectData();
+                    stationObj.Id = sectorPrefix + "_station";
+                    stationObj.ObjectType = GalaxyObjectType.Station;
+
+                    // Stations and ports are tactical networked objects; they require a FishNet NetworkObject.
+                    stationObj.VisibilityCategory = SectorVisibilityCategory.TacticalNetworked;
+
+                    // Use the starport's local 2D position from the generator.
+                    stationObj.Position = new GalaxyPosition
+                    {
+                        SectorX = sector.x,
+                        SectorY = sector.y,
+                        LocalPosition = new Vector3(sector.starport.localPosition.x, 0f, sector.starport.localPosition.y)
+                    };
+
+                    // Add the station to the sector's object list.
+                    galaxySector.Objects.Add(stationObj);
+                }
+
+                // If the sector has a jump gate, create a GalaxyObjectData for it.
+                if (sector.jumpGate != null)
+                {
+                    GalaxyObjectData gateObj = new GalaxyObjectData();
+                    gateObj.Id = sectorPrefix + "_jumpgate";
+                    gateObj.ObjectType = GalaxyObjectType.JumpGate;
+
+                    // Jump gates are tactical networked objects; players interact with them via FishNet.
+                    gateObj.VisibilityCategory = SectorVisibilityCategory.TacticalNetworked;
+
+                    // Use the jump gate's local 2D position from the generator.
+                    gateObj.Position = new GalaxyPosition
+                    {
+                        SectorX = sector.x,
+                        SectorY = sector.y,
+                        LocalPosition = new Vector3(sector.jumpGate.localPosition.x, 0f, sector.jumpGate.localPosition.y)
+                    };
+
+                    // Add the jump gate to the sector's object list.
+                    galaxySector.Objects.Add(gateObj);
+                }
+            }
+
+            // Add the completed galaxy sector to the list used by the runtime systems.
+            galaxySectors.Add(galaxySector);
+        }
+
+        // Log how many data-driven sector entries were built.
+        Debug.Log("BigBangGenerator: Built GalaxySectorData for " + galaxySectors.Count + " sectors.");
     }
 
     // Logs a simple summary of the generated galaxy to the Unity console.

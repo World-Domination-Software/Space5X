@@ -1,0 +1,282 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+// Manages which galaxy sectors are active at any point in time.
+//
+// Sectors have three activity tiers:
+//   Full Activation   – the player's current sector; all objects spawn including ships and stations.
+//   Partial Activation – sectors adjacent to the player's sector; only StrategicLandmark visuals spawn.
+//   Inactive           – all other sectors; no GameObjects exist, data-only simulation.
+//
+// When the player moves to a new sector, this manager despawns objects from sectors
+// that are no longer needed and spawns objects for newly relevant sectors.
+//
+// Place this MonoBehaviour on a server-side manager GameObject in the main scene.
+public class SectorActivationManager : MonoBehaviour
+{
+    // Reference to the BigBangGenerator that holds all GalaxySectorData.
+    // Assign this in the Inspector.
+    public BigBangGenerator bigBangGenerator;
+
+    // Reference to the SectorVisualFactory used to create client-side visuals.
+    // Assign this in the Inspector.
+    public SectorVisualFactory visualFactory;
+
+    // The sector X index the player is currently in.
+    // Updated by SectorTransitionManager whenever the player crosses a border.
+    public int playerSectorX;
+
+    // The sector Y index the player is currently in.
+    // Updated by SectorTransitionManager whenever the player crosses a border.
+    public int playerSectorY;
+
+    // Tracks which sectors are currently fully active, by their "x,y" key.
+    // Used to avoid double-spawning or missing a despawn step.
+    private HashSet<string> fullyActiveSectors = new HashSet<string>();
+
+    // Tracks which sectors are currently partially active, by their "x,y" key.
+    private HashSet<string> partiallyActiveSectors = new HashSet<string>();
+
+    // Called by Unity when the game starts. Sets up the initial sector activations.
+    private void Start()
+    {
+        // Activate the player's starting sector and its immediate neighbors.
+        RefreshActiveSectors();
+    }
+
+    // Called by SectorTransitionManager (or any other system) when the player
+    // moves to a new sector. Updates activation for the new sector layout.
+    // newSectorX: X index of the sector the player just entered.
+    // newSectorY: Y index of the sector the player just entered.
+    public void OnPlayerChangedSector(int newSectorX, int newSectorY)
+    {
+        // Update the stored player sector.
+        playerSectorX = newSectorX;
+        playerSectorY = newSectorY;
+
+        // Recalculate which sectors should be active with the new player position.
+        RefreshActiveSectors();
+    }
+
+    // Recalculates and updates all active and partial sectors based on the
+    // current player sector. Despawns sectors that are no longer needed and
+    // spawns sectors that have become relevant.
+    public void RefreshActiveSectors()
+    {
+        // Build the set of sectors that should be fully active (player's sector only).
+        HashSet<string> desiredFull = new HashSet<string>();
+        desiredFull.Add(MakeSectorKey(playerSectorX, playerSectorY));
+
+        // Build the set of sectors that should be partially active (four adjacent neighbors).
+        HashSet<string> desiredPartial = new HashSet<string>();
+        desiredPartial.Add(MakeSectorKey(playerSectorX + 1, playerSectorY));
+        desiredPartial.Add(MakeSectorKey(playerSectorX - 1, playerSectorY));
+        desiredPartial.Add(MakeSectorKey(playerSectorX, playerSectorY + 1));
+        desiredPartial.Add(MakeSectorKey(playerSectorX, playerSectorY - 1));
+
+        // Deactivate any sector that was fully active but is no longer needed.
+        List<string> toDeactivateFull = new List<string>();
+        foreach (string key in fullyActiveSectors)
+        {
+            // If a previously full sector is not in the new desired sets, deactivate it.
+            if (!desiredFull.Contains(key) && !desiredPartial.Contains(key))
+            {
+                toDeactivateFull.Add(key);
+            }
+        }
+        for (int i = 0; i < toDeactivateFull.Count; i++)
+        {
+            // Despawn all objects for this sector.
+            DeactivateSector(toDeactivateFull[i]);
+        }
+
+        // Deactivate any sector that was partially active but is no longer needed.
+        List<string> toDeactivatePartial = new List<string>();
+        foreach (string key in partiallyActiveSectors)
+        {
+            if (!desiredFull.Contains(key) && !desiredPartial.Contains(key))
+            {
+                toDeactivatePartial.Add(key);
+            }
+        }
+        for (int i = 0; i < toDeactivatePartial.Count; i++)
+        {
+            // Despawn all objects for this sector.
+            DeactivateSector(toDeactivatePartial[i]);
+        }
+
+        // Fully activate the player's sector if it is not already full.
+        foreach (string key in desiredFull)
+        {
+            if (!fullyActiveSectors.Contains(key))
+            {
+                // If this sector was partially active, despawn its partial content first.
+                if (partiallyActiveSectors.Contains(key))
+                {
+                    DeactivateSector(key);
+                }
+
+                // Fully activate this sector.
+                FullyActivateSector(key);
+            }
+        }
+
+        // Partially activate each neighbor sector if it is not already activated.
+        foreach (string key in desiredPartial)
+        {
+            // Skip sectors that are already fully active.
+            if (fullyActiveSectors.Contains(key))
+            {
+                continue;
+            }
+
+            if (!partiallyActiveSectors.Contains(key))
+            {
+                // Partially activate this neighbor sector.
+                PartiallyActivateSector(key);
+            }
+        }
+    }
+
+    // Fully activates the sector identified by the given key.
+    // Spawns all objects in the sector including TacticalNetworked objects.
+    // key: a "x,y" string identifying the sector.
+    private void FullyActivateSector(string key)
+    {
+        // Find the GalaxySectorData for this key.
+        GalaxySectorData sectorData = FindSectorData(key);
+        if (sectorData == null)
+        {
+            // No data found for this key; nothing to spawn.
+            return;
+        }
+
+        // Spawn all objects in the sector regardless of visibility category.
+        for (int i = 0; i < sectorData.Objects.Count; i++)
+        {
+            GalaxyObjectData obj = sectorData.Objects[i];
+
+            // Spawn a visual for this object through the visual factory.
+            // The factory handles TacticalNetworked, StrategicLandmark, and BackgroundVisual.
+            visualFactory.SpawnVisual(obj);
+        }
+
+        // Mark this sector as fully active.
+        fullyActiveSectors.Add(key);
+
+        // Log that the sector is now fully active.
+        Debug.Log("SectorActivationManager: Fully activated sector " + key);
+    }
+
+    // Partially activates the sector identified by the given key.
+    // Only spawns StrategicLandmark objects (stars, major planets, black holes).
+    // key: a "x,y" string identifying the sector.
+    private void PartiallyActivateSector(string key)
+    {
+        // Find the GalaxySectorData for this key.
+        GalaxySectorData sectorData = FindSectorData(key);
+        if (sectorData == null)
+        {
+            // No data found for this key; nothing to spawn.
+            return;
+        }
+
+        // Only spawn objects that are StrategicLandmarks.
+        for (int i = 0; i < sectorData.Objects.Count; i++)
+        {
+            GalaxyObjectData obj = sectorData.Objects[i];
+
+            // Skip TacticalNetworked (ships, stations) and BackgroundVisual objects.
+            if (obj.VisibilityCategory != SectorVisibilityCategory.StrategicLandmark)
+            {
+                continue;
+            }
+
+            // Spawn this strategic landmark through the visual factory.
+            visualFactory.SpawnVisual(obj);
+        }
+
+        // Mark this sector as partially active.
+        partiallyActiveSectors.Add(key);
+
+        // Log that the sector is now partially active.
+        Debug.Log("SectorActivationManager: Partially activated sector " + key);
+    }
+
+    // Deactivates the sector identified by the given key.
+    // Despawns all currently spawned GameObjects in that sector.
+    // key: a "x,y" string identifying the sector.
+    private void DeactivateSector(string key)
+    {
+        // Find the GalaxySectorData for this key.
+        GalaxySectorData sectorData = FindSectorData(key);
+        if (sectorData == null)
+        {
+            // No data to despawn; just remove the tracking records.
+            fullyActiveSectors.Remove(key);
+            partiallyActiveSectors.Remove(key);
+            return;
+        }
+
+        // Despawn each object in the sector.
+        for (int i = 0; i < sectorData.Objects.Count; i++)
+        {
+            GalaxyObjectData obj = sectorData.Objects[i];
+
+            // Tell the visual factory to remove the GameObject for this object.
+            visualFactory.DespawnVisual(obj.Id);
+        }
+
+        // Remove the sector from both active tracking sets.
+        fullyActiveSectors.Remove(key);
+        partiallyActiveSectors.Remove(key);
+
+        // Log that the sector has been deactivated.
+        Debug.Log("SectorActivationManager: Deactivated sector " + key);
+    }
+
+    // Searches the BigBangGenerator's sector data list for the sector
+    // that matches the given "x,y" key string.
+    // Returns the matching GalaxySectorData, or null if not found.
+    // key: a "x,y" string identifying the sector.
+    private GalaxySectorData FindSectorData(string key)
+    {
+        // If the generator reference is missing, we cannot look up any data.
+        if (bigBangGenerator == null)
+        {
+            return null;
+        }
+
+        // Get the full list of galaxy sectors from the generator.
+        List<GalaxySectorData> allSectors = bigBangGenerator.GalaxySectors;
+        if (allSectors == null)
+        {
+            return null;
+        }
+
+        // Loop through every sector looking for a matching key.
+        for (int i = 0; i < allSectors.Count; i++)
+        {
+            GalaxySectorData sector = allSectors[i];
+
+            // Build the key for the current sector and compare.
+            if (MakeSectorKey(sector.SectorX, sector.SectorY) == key)
+            {
+                return sector;
+            }
+        }
+
+        // No matching sector found.
+        return null;
+    }
+
+    // Builds a simple string key for a sector from its X and Y grid indices.
+    // Used to identify sectors in dictionaries and sets without boxing struct keys.
+    // x: sector X index.
+    // y: sector Y index.
+    // Returns a key in the format "x,y".
+    private string MakeSectorKey(int x, int y)
+    {
+        return x + "," + y;
+    }
+}
