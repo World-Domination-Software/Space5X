@@ -1,0 +1,173 @@
+{
+  "version": 3,
+  "targets": {
+    ".NETStandard,Version=v2.1": {
+      "Assembly-CSharp/1.0.0": {
+        "type": "project",
+        "framework": ".NETStandard,Version=v2.1",
+        "dependencies": {
+          "FishNet.Codegen.Cecil": "1.0.0",
+          "FishNet.Demos": "1.0.0",
+          "FishNet.Runtime": "1.0.0",
+          "GameKit.Dependencies": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/Assembly-CSharp.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Assembly-CSharp.dll": {}
+        }
+      },
+      "FishNet.Codegen.Cecil/1.0.0": {
+        "type": "project",
+        "framework": ".NETStandard,Version=v2.1",
+        "compile": {
+          "bin/placeholder/FishNet.Codegen.Cecil.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/FishNet.Codegen.Cecil.dll": {}
+        }
+      },
+      "FishNet.Demos/1.0.0": {
+        "type": "project",
+        "framework": ".NETStandard,Version=v2.1",
+        "dependencies": {
+          "FishNet.Runtime": "1.0.0",
+          "GameKit.Dependencies": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/FishNet.Demos.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/FishNet.Demos.dll": {}
+        }
+      },
+      "FishNet.Runtime/1.0.0": {
+        "type": "project",
+        "framework": ".NETStandard,Version=v2.1",
+        "dependencies": {
+          "GameKit.Dependencies": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/FishNet.Runtime.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/FishNet.Runtime.dll": {}
+        }
+      },
+      "GameKit.Dependencies/1.0.0": {
+        "type": "project",
+        "framework": ".NETStandard,Version=v2.1",
+        "compile": {
+          "bin/placeholder/GameKit.Dependencies.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/GameKit.Dependencies.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Assembly-CSharp/1.0.0": {
+      "type": "project",
+      "path": "Assembly-CSharp.csproj",
+      "msbuildProject": "Assembly-CSharp.csproj"
+    },
+    "FishNet.Codegen.Cecil/1.0.0": {
+      "type": "project",
+      "path": "FishNet.Codegen.Cecil.csproj",
+      "msbuildProject": "FishNet.Codegen.Cecil.csproj"
+    },
+    "FishNet.Demos/1.0.0": {
+      "type": "project",
+      "path": "FishNet.Demos.csproj",
+      "msbuildProject": "FishNet.Demos.csproj"
+    },
+    "FishNet.Runtime/1.0.0": {
+      "type": "project",
+      "path": "FishNet.Runtime.csproj",
+      "msbuildProject": "FishNet.Runtime.csproj"
+    },
+    "GameKit.Dependencies/1.0.0": {
+      "type": "project",
+      "path": "GameKit.Dependencies.csproj",
+      "msbuildProject": "GameKit.Dependencies.csproj"
+    }
+  },
+  "projectFileDependencyGroups": {
+    ".NETStandard,Version=v2.1": [
+      "Assembly-CSharp >= 1.0.0",
+      "FishNet.Codegen.Cecil >= 1.0.0",
+      "FishNet.Demos >= 1.0.0",
+      "FishNet.Runtime >= 1.0.0",
+      "GameKit.Dependencies >= 1.0.0"
+    ]
+  },
+  "packageFolders": {
+    "/home/localuser/.nuget/packages/": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "/mnt/dev/Projects/unity/Space5x/Assembly-CSharp-Editor.csproj",
+      "projectName": "Assembly-CSharp-Editor",
+      "projectPath": "/mnt/dev/Projects/unity/Space5x/Assembly-CSharp-Editor.csproj",
+      "packagesPath": "/home/localuser/.nuget/packages/",
+      "outputPath": "/mnt/dev/Projects/unity/Space5x/Temp/obj/Debug/Assembly-CSharp-Editor/",
+      "projectStyle": "PackageReference",
+      "configFilePaths": [
+        "/home/localuser/.nuget/NuGet/NuGet.Config"
+      ],
+      "originalTargetFrameworks": [
+        "netstandard2.1"
+      ],
+      "sources": {
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "netstandard2.1": {
+          "targetAlias": "netstandard2.1",
+          "projectReferences": {
+            "/mnt/dev/Projects/unity/Space5x/Assembly-CSharp.csproj": {
+              "projectPath": "/mnt/dev/Projects/unity/Space5x/Assembly-CSharp.csproj"
+            },
+            "/mnt/dev/Projects/unity/Space5x/FishNet.Codegen.Cecil.csproj": {
+              "projectPath": "/mnt/dev/Projects/unity/Space5x/FishNet.Codegen.Cecil.csproj"
+            },
+            "/mnt/dev/Projects/unity/Space5x/FishNet.Demos.csproj": {
+              "projectPath": "/mnt/dev/Projects/unity/Space5x/FishNet.Demos.csproj"
+            },
+            "/mnt/dev/Projects/unity/Space5x/FishNet.Runtime.csproj": {
+              "projectPath": "/mnt/dev/Projects/unity/Space5x/FishNet.Runtime.csproj"
+            },
+            "/mnt/dev/Projects/unity/Space5x/GameKit.Dependencies.csproj": {
+              "projectPath": "/mnt/dev/Projects/unity/Space5x/GameKit.Dependencies.csproj"
+            }
+          }
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      }
+    },
+    "frameworks": {
+      "netstandard2.1": {
+        "targetAlias": "netstandard2.1",
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48",
+          "net481"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/8.0.125/RuntimeIdentifierGraph.json"
+      }
+    }
+  }
+}
