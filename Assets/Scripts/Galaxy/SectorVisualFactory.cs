@@ -158,7 +158,21 @@ public class SectorVisualFactory : MonoBehaviour
             return jumpGatePrefab;
         }
 
-        // Ships and stations are NetworkObjects and should never reach this point.
+        // Ships (TacticalNetworked) are spawned through FishNet network spawning and
+        // should never reach the visual factory. Return null to signal no prefab.
+        if (objectType == GalaxyObjectType.Ship)
+        {
+            return null;
+        }
+
+        // Stations (TacticalNetworked) are spawned through FishNet network spawning and
+        // should never reach the visual factory. Return null to signal no prefab.
+        if (objectType == GalaxyObjectType.Station)
+        {
+            return null;
+        }
+
+        // Unknown type; return null so the caller can log a warning.
         return null;
     }
 

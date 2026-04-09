@@ -25,6 +25,13 @@ public class NetworkedSectorObject : MonoBehaviour
     // to decide whether the object is visible in adjacent sectors.
     public SectorVisibilityCategory VisibilityCategory;
 
+    // True if this NetworkedSectorObject belongs to the player's primary ship.
+    // The SectorObserverCondition uses this flag to identify which object to
+    // use as the reference sector when a connection owns multiple NetworkObjects
+    // (for example a ship and a deployed probe in different sectors).
+    // Set this to true on the player ship prefab or via the spawn flow.
+    public bool isPlayerShip;
+
     // Sets the sector coordinates and visibility category in a single call.
     // sectorX: new X sector index.
     // sectorY: new Y sector index.

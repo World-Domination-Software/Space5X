@@ -56,7 +56,9 @@ public class SectorObserverCondition : ObserverCondition
         }
 
         // Find the player's sector by looking at the connection's owned objects.
-        // The player ship should have a NetworkedSectorObject component.
+        // We specifically look for the object flagged as the player's primary ship
+        // (isPlayerShip == true) to avoid using a probe or secondary vessel in a
+        // different sector as the reference point.
         int playerSectorX = 0;
         int playerSectorY = 0;
         bool foundPlayerSector = false;
@@ -66,14 +68,14 @@ public class SectorObserverCondition : ObserverCondition
         {
             // Try to get a NetworkedSectorObject from this owned object.
             NetworkedSectorObject clientSector = clientObject.GetComponent<NetworkedSectorObject>();
-            if (clientSector != null)
+            if (clientSector != null && clientSector.isPlayerShip)
             {
-                // Use the first owned object that has a sector component as the player's sector.
+                // Use the sector from the connection's primary player ship.
                 playerSectorX = clientSector.SectorX;
                 playerSectorY = clientSector.SectorY;
                 foundPlayerSector = true;
 
-                // Stop searching once we have found one.
+                // Stop searching; we found the primary ship.
                 break;
             }
         }

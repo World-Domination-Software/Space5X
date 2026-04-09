@@ -898,13 +898,12 @@ public class BigBangGenerator : MonoBehaviour
                     // adjacent sectors as distant visual markers.
                     planetObj.VisibilityCategory = SectorVisibilityCategory.StrategicLandmark;
 
-                    // Use the planet's local 2D position from the generator.
-                    // Z is mapped to the Unity Z axis; Y is left as zero (flat galaxy plane).
+                    // Convert the planet's 2D local position to a 3D GalaxyPosition.
                     planetObj.Position = new GalaxyPosition
                     {
                         SectorX = sector.x,
                         SectorY = sector.y,
-                        LocalPosition = new Vector3(planet.localPosition.x, 0f, planet.localPosition.y)
+                        LocalPosition = LocalPosition2DTo3D(planet.localPosition)
                     };
 
                     // Add the planet to the sector's object list.
@@ -921,12 +920,12 @@ public class BigBangGenerator : MonoBehaviour
                     // Stations and ports are tactical networked objects; they require a FishNet NetworkObject.
                     stationObj.VisibilityCategory = SectorVisibilityCategory.TacticalNetworked;
 
-                    // Use the starport's local 2D position from the generator.
+                    // Convert the starport's 2D local position to a 3D GalaxyPosition.
                     stationObj.Position = new GalaxyPosition
                     {
                         SectorX = sector.x,
                         SectorY = sector.y,
-                        LocalPosition = new Vector3(sector.starport.localPosition.x, 0f, sector.starport.localPosition.y)
+                        LocalPosition = LocalPosition2DTo3D(sector.starport.localPosition)
                     };
 
                     // Add the station to the sector's object list.
@@ -943,12 +942,12 @@ public class BigBangGenerator : MonoBehaviour
                     // Jump gates are tactical networked objects; players interact with them via FishNet.
                     gateObj.VisibilityCategory = SectorVisibilityCategory.TacticalNetworked;
 
-                    // Use the jump gate's local 2D position from the generator.
+                    // Convert the jump gate's 2D local position to a 3D GalaxyPosition.
                     gateObj.Position = new GalaxyPosition
                     {
                         SectorX = sector.x,
                         SectorY = sector.y,
-                        LocalPosition = new Vector3(sector.jumpGate.localPosition.x, 0f, sector.jumpGate.localPosition.y)
+                        LocalPosition = LocalPosition2DTo3D(sector.jumpGate.localPosition)
                     };
 
                     // Add the jump gate to the sector's object list.
@@ -962,6 +961,17 @@ public class BigBangGenerator : MonoBehaviour
 
         // Log how many data-driven sector entries were built.
         Debug.Log("BigBangGenerator: Built GalaxySectorData for " + galaxySectors.Count + " sectors.");
+    }
+
+    // Converts a 2D local position (Vector2) from the generator into a 3D Vector3
+    // used by GalaxyPosition. The generator works in 2D (X and Y axes) while Unity
+    // uses X and Z for horizontal space. The Y component of the generator's position
+    // maps to the Z axis in Unity, and height (Y in Unity) is set to zero.
+    // pos2D: the 2D local position to convert.
+    // Returns a Vector3 with X = pos2D.x, Y = 0, Z = pos2D.y.
+    private Vector3 LocalPosition2DTo3D(Vector2 pos2D)
+    {
+        return new Vector3(pos2D.x, 0f, pos2D.y);
     }
 
     // Logs a simple summary of the generated galaxy to the Unity console.

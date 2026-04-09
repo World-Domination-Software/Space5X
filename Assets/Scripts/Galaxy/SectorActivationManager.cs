@@ -37,11 +37,53 @@ public class SectorActivationManager : MonoBehaviour
     // Tracks which sectors are currently partially active, by their "x,y" key.
     private HashSet<string> partiallyActiveSectors = new HashSet<string>();
 
-    // Called by Unity when the game starts. Sets up the initial sector activations.
+    // Lookup table built once at Start that maps sector keys ("x,y") to GalaxySectorData.
+    // Using a dictionary avoids a slow linear search through all 250,000 sectors every
+    // time a sector needs to be activated or deactivated.
+    private Dictionary<string, GalaxySectorData> sectorLookup = new Dictionary<string, GalaxySectorData>();
+
+    // Called by Unity when the game starts. Builds the fast lookup table and
+    // then sets up the initial sector activations.
     private void Start()
     {
+        // Build the lookup dictionary from the generator's data before any activation.
+        BuildSectorLookup();
+
         // Activate the player's starting sector and its immediate neighbors.
         RefreshActiveSectors();
+    }
+
+    // Builds a dictionary from sector key ("x,y") to GalaxySectorData so that
+    // FindSectorData runs in O(1) instead of O(n) on every sector change.
+    // Called once at Start after the BigBangGenerator has finished generating.
+    private void BuildSectorLookup()
+    {
+        // Clear any stale data from a previous generation.
+        sectorLookup.Clear();
+
+        // If there is no generator reference, there is nothing to index.
+        if (bigBangGenerator == null)
+        {
+            return;
+        }
+
+        // Get the full list of data-driven sectors.
+        List<GalaxySectorData> allSectors = bigBangGenerator.GalaxySectors;
+        if (allSectors == null)
+        {
+            return;
+        }
+
+        // Add each sector to the dictionary keyed by its "x,y" string.
+        for (int i = 0; i < allSectors.Count; i++)
+        {
+            GalaxySectorData sector = allSectors[i];
+            string key = MakeSectorKey(sector.SectorX, sector.SectorY);
+            sectorLookup[key] = sector;
+        }
+
+        // Log how many sectors were indexed.
+        Debug.Log("SectorActivationManager: Built sector lookup with " + sectorLookup.Count + " entries.");
     }
 
     // Called by SectorTransitionManager (or any other system) when the player
@@ -156,8 +198,19 @@ public class SectorActivationManager : MonoBehaviour
         {
             GalaxyObjectData obj = sectorData.Objects[i];
 
-            // Spawn a visual for this object through the visual factory.
-            // The factory handles TacticalNetworked, StrategicLandmark, and BackgroundVisual.
+            // TacticalNetworked objects (ships, stations, jump gates) must be spawned
+            // through FishNet's network spawning system, not the visual factory.
+            // TODO: Implement FishNet NetworkObject spawning for TacticalNetworked objects
+            // once the server-side spawning infrastructure is in place. See
+            // Docs/FishNet-Networking-Reference.md for the recommended spawn flow.
+            if (obj.VisibilityCategory == SectorVisibilityCategory.TacticalNetworked)
+            {
+                // Skip networked objects for now; visual factory handles visuals only.
+                continue;
+            }
+
+            // Spawn a visual for this StrategicLandmark or BackgroundVisual object
+            // through the visual factory.
             visualFactory.SpawnVisual(obj);
         }
 
@@ -235,38 +288,20 @@ public class SectorActivationManager : MonoBehaviour
         Debug.Log("SectorActivationManager: Deactivated sector " + key);
     }
 
-    // Searches the BigBangGenerator's sector data list for the sector
+    // Searches the sector lookup dictionary for the GalaxySectorData
     // that matches the given "x,y" key string.
     // Returns the matching GalaxySectorData, or null if not found.
     // key: a "x,y" string identifying the sector.
     private GalaxySectorData FindSectorData(string key)
     {
-        // If the generator reference is missing, we cannot look up any data.
-        if (bigBangGenerator == null)
+        // Use the pre-built dictionary for an O(1) lookup.
+        GalaxySectorData sector;
+        if (sectorLookup.TryGetValue(key, out sector))
         {
-            return null;
+            return sector;
         }
 
-        // Get the full list of galaxy sectors from the generator.
-        List<GalaxySectorData> allSectors = bigBangGenerator.GalaxySectors;
-        if (allSectors == null)
-        {
-            return null;
-        }
-
-        // Loop through every sector looking for a matching key.
-        for (int i = 0; i < allSectors.Count; i++)
-        {
-            GalaxySectorData sector = allSectors[i];
-
-            // Build the key for the current sector and compare.
-            if (MakeSectorKey(sector.SectorX, sector.SectorY) == key)
-            {
-                return sector;
-            }
-        }
-
-        // No matching sector found.
+        // No sector found for this key.
         return null;
     }
 
